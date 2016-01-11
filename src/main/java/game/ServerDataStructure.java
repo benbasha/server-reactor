@@ -49,7 +49,7 @@ public class ServerDataStructure {
     }
 
     public boolean joinToRoom(String roomName, String name) {
-        if (name.equals("") || _Games.contains(roomName))
+        if (name.equals("") || _GamePerRoom.containsKey(getRoom(name)))
             return false;
 
         Player player = _Players.get(name);
@@ -94,7 +94,8 @@ public class ServerDataStructure {
 
 
     public boolean startGame(String game, String playerName) {
-        if (_Games.containsKey(game) && !playerName.equals("") && !_Players.get(playerName).get_roomName().equals("")) {
+        if (_Games.containsKey(game) && !playerName.equals("") && !_Players.get(playerName).get_roomName().equals("")
+                && !_GamePerRoom.containsKey(_Players.get(playerName).get_roomName())) {
             GamesData gamesData = _Games.get(game);
             _GamePerRoom.put(_Players.get(playerName).get_roomName(), gamesData);
             String RoomName = _Players.get(playerName).get_roomName();
@@ -127,12 +128,15 @@ public class ServerDataStructure {
     }
 
     public void quit(String name) {
-        _Rooms.get(_Players.get(name).get_roomName()).remove(_Players.get(name));
+        if (!_GamePerRoom.containsKey(_Players.get(name).get_roomName())) {
+            _Rooms.get(_Players.get(name).get_roomName()).remove(_Players.get(name));
+            _Players.get(name).call("SYSMSG QUIT ACCEPTED");
+            /*GamesData game = _GamePerRoom.get(_Players.get(name).get_roomName());
 
-        GamesData game = _GamePerRoom.get(_Players.get(name).get_roomName());
-
-        if (game != null)
-            game.quit(_Players.get(name).get_roomName());
+            if (game != null)
+                game.quit(_Players.get(name).get_roomName());*/
+        } else
+            _Players.get(name).call("SYSMSG QUIT REJECTED");
     }
 
     public void sendDataToAllUsersInRoom(String roomName, String msg) {
@@ -143,5 +147,9 @@ public class ServerDataStructure {
 
     public void sendDataToUser(String n, String s) {
         _Players.get(n).call(s);
+    }
+
+    public void endGame(String roomName) {
+        _GamePerRoom.remove(roomName);
     }
 }

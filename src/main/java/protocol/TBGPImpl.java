@@ -35,7 +35,7 @@ public class TBGPImpl implements AsyncServerProtocol<StringMessage> {
      * @return the reply that should be sent to the client, or null if no reply needed
      */
     public void processMessage(StringMessage msg, ProtocolCallback<StringMessage> callback) throws IOException {
-        if (!msg.getMessage().equals("")) {
+        if (!_connectionTerminated && !msg.getMessage().equals("")) {
             MessageParser parser = new MessageParser(msg.getMessage());
             Message command = parser.getCommand(); //getting the Command fm
 
@@ -109,9 +109,9 @@ public class TBGPImpl implements AsyncServerProtocol<StringMessage> {
                             callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " REJECTED"));
                         break;
                     case QUIT:
-                        serverDataStructure.quit(parser.getMessage());
+                        serverDataStructure.quit(name);
+                        _shouldClose = true;
                         break;
-
                     default:
                         callback.sendMessage(new StringMessage("SYSMSG " + msg.getMessage() + " UNIDENTIFIED"));
                 }
@@ -125,7 +125,7 @@ public class TBGPImpl implements AsyncServerProtocol<StringMessage> {
      * @return false - this simple protocol doesn't allow termination...
      */
     public boolean isEnd(StringMessage msg) {
-        return msg.equals("bye");
+        return msg.equals("QUIT");
     }
 
     /**

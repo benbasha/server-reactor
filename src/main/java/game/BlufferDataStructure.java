@@ -56,7 +56,9 @@ public class BlufferDataStructure implements GamesData {
 
             serverDataStructure.sendDataToAllUsersInRoom(roomName, "ASKTXT " + bluffer.blufferQuestion.getQuestion());
             bluffer.blufferAnsweredPlayers = bluffer.blufferAnswers;
-        }
+        } else
+            //end the game after 3 questions
+            serverDataStructure.endGame(roomName);
 
 
     }
@@ -94,11 +96,15 @@ public class BlufferDataStructure implements GamesData {
             serverDataStructure.sendDataToUser(playerName,"SYSMSG TEXTRESP REJECTED");
     }
 
+    public boolean isNumeric(String s) {
+        return s.matches("[-+]?\\d*\\.?\\d+");
+    }
+
     @Override
     public void selectResp(String answer, String roomName, String playerName) {
         Bluffer bluffer =blufferGames.get(roomName);
 
-        if (!bluffer.choiceForPlayer.containsKey(playerName) && Integer.valueOf(answer) < bluffer.blufferFakeAnswers.size()) {
+        if (isNumeric(answer) && !bluffer.choiceForPlayer.containsKey(playerName) && Integer.valueOf(answer) < bluffer.blufferFakeAnswers.size()) {
             serverDataStructure.sendDataToUser(playerName,"SYSMSG SELECTRESP ACCEPTED");
 
             bluffer.choiceForPlayer.put(playerName, bluffer.blufferFakeAnswers.get(Integer.valueOf(answer)).toLowerCase());
@@ -117,7 +123,7 @@ public class BlufferDataStructure implements GamesData {
                     System.out.println(c + " " + bluffer.choiceForPlayer.get(c) + "==" + bluffer.blufferQuestion.getRealAnswer().toLowerCase());
                     if (!(bluffer.choiceForPlayer.get(c)).equals(bluffer.blufferQuestion.getRealAnswer().toLowerCase())) {
                         for (String a : bluffer.answerForPlayer.keySet()) {
-                            //System.out.println("BLA BLA " + c + " " + bluffer.choiceForPlayer.get(c) + "==" + bluffer.answerForPlayer.get(a));
+                            System.out.println("BLA BLA " + c + " " + bluffer.choiceForPlayer.get(c) + "==" + bluffer.answerForPlayer.get(a));
                             if ((bluffer.choiceForPlayer.get(c)).equals(bluffer.answerForPlayer.get(a)))
                                 pointsForPlayer.put(a, pointsForPlayer.get(a) + 5);
                         }
