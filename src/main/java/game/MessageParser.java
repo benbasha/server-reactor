@@ -14,7 +14,7 @@ public class MessageParser {
         int index = message.indexOf(" ");
         if (index != -1) {
             String start = message.substring(0, index);
-            message = message.substring(index,message.length());
+            message = message.substring(index + 1,message.length());
             switch (start) {
                 case "NICK":
                     return Message.NICK;
@@ -22,22 +22,25 @@ public class MessageParser {
                     return Message.JOIN;
                 case "MSG":
                     return Message.MSG;
-                case "LISTGAMES":
-                    return Message.LISTGAMES;
                 case "STARTGAME":
                     return Message.STARTGAME;
                 case "TXTRESP":
                     return Message.TXTRESP;
                 case "SELECTRESP":
                     return Message.SELECTRESP;
-                case "QUIT":
-                    return Message.QUIT;
-                default:
-                    return null;
             }
         }
-        else
-            return null;
+        else {
+            String start = message;
+            message = "";
+            switch (start) {
+                case "LISTGAMES":
+                    return Message.LISTGAMES;
+                case "QUIT":
+                    return Message.QUIT;
+            }
+        }
+        return null;
     }
 
     public String getMessage(){

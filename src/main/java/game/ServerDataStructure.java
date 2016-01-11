@@ -17,25 +17,27 @@ public class ServerDataStructure {
         _Players = new ConcurrentHashMap<>();
         _Rooms = new ConcurrentHashMap<>();
         _Games = new ConcurrentHashMap<>();
+        _GamePerRoom = new ConcurrentHashMap<>();
+
+        _Games.put("BLUFFER", new BlufferDataStructure(this));
     }
 
-
     public boolean containsPlayer(String nickName) {
-        return _Players.contains(nickName);
+        return _Players.containsKey(nickName);
     }
 
     public boolean containsRoom(String roomName){
-        return _Rooms.contains(roomName);
+        return _Rooms.containsKey(roomName);
     }
 
     public String getRoom(String playerName){
-        if ( _Players.contains(playerName)) {
+        if ( _Players.containsKey(playerName)) {
             String RoomName = _Players.get(playerName).get_roomName();
             if (RoomName != null)
                 return RoomName;
         }
 
-        return null;
+        return "";
     }
 
     public synchronized Iterator<Player> getRoomsPlayers(String roomName){
@@ -67,7 +69,7 @@ public class ServerDataStructure {
         }
 
         //the player is in other room - move it out
-        if (player.get_roomName().equals(""))
+        if (!player.get_roomName().equals(""))
             _Rooms.get(player.get_roomName()).remove(player);
         //join to room
         player.set_roomName(roomName);
@@ -77,8 +79,10 @@ public class ServerDataStructure {
 
 
     public String getGamesList() {
+
+
         StringBuilder str = null;
-        if (_Games.keySet().size() > 1) {
+        if (_Games.keySet().size() > 0) {
             str = new StringBuilder("SYSMSG LISTGAMES ACCEPTED");
             for (String s : _Games.keySet())
                 str.append(" " + s);
@@ -93,7 +97,8 @@ public class ServerDataStructure {
         if (_Games.containsKey(game)) {
             GamesData gamesData = _Games.get(game);
             _GamePerRoom.put(_Players.get(playerName).get_roomName(), gamesData);
-            gamesData.startNewGame(_Players.get(playerName).get_roomName(), _Rooms.get(game).size());
+            String RoomName = _Players.get(playerName).get_roomName();
+            gamesData.startNewGame(RoomName, _Rooms.get(RoomName).size());
             return true;
         }
         return false;

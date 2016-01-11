@@ -37,7 +37,10 @@ public class BlufferDataStructure implements GamesData {
         bluffer.blufferAnswers = numberOfPlayers;
         bluffer.blufferAnsweredPlayers = numberOfPlayers;
         bluffer.blufferQuestion =  getNewQuestion();
+        bluffer.answerForPlayer = new ConcurrentHashMap<>();
         bluffer.blufferFakeAnswers =  new ArrayList<String>();
+        bluffer.choiceForPlayer = new ConcurrentHashMap<>();
+        bluffer.pointsForPlayer = new ConcurrentHashMap<>();
 
         blufferGames.put(roomName, bluffer);
 
@@ -45,31 +48,38 @@ public class BlufferDataStructure implements GamesData {
     }
 
     private void sendQuestion(String roomName) {
-        Bluffer bluffer =blufferGames.get(roomName);
+        Bluffer bluffer = blufferGames.get(roomName);
 
-        serverDataStructure.sendDataToAllUsersInRoom(roomName, "ASKTXT " + bluffer.blufferQuestion.getQuestion());
-        bluffer.blufferAnsweredPlayers=bluffer.blufferAnswers;
+        if (++bluffer.blufferGame <= 3) {
+            bluffer.blufferQuestion =  getNewQuestion();
+
+            serverDataStructure.sendDataToAllUsersInRoom(roomName, "ASKTXT " + bluffer.blufferQuestion.getQuestion());
+            bluffer.blufferAnsweredPlayers = bluffer.blufferAnswers;
+        }
+
+
     }
 
     @Override
     public void textResp(String answer, String roomName, String playerName) {
         Bluffer bluffer =blufferGames.get(roomName);
 
-        int answers = bluffer.blufferAnsweredPlayers;
         bluffer.blufferFakeAnswers.add(answer);
-        bluffer.answerForPlayer.put(playerName, roomName);
+        bluffer.answerForPlayer.put(playerName, answer.toLowerCase());
 
-        if (--answers == 0) {
+        if (--bluffer.blufferAnsweredPlayers == 0) {
             bluffer.blufferFakeAnswers.add(bluffer.blufferQuestion.getRealAnswer());
 
             StringBuilder str = new StringBuilder("ASKCHOICES");
             ArrayList<String> arr = new ArrayList<>(bluffer.blufferFakeAnswers);
             bluffer.blufferFakeAnswers = new ArrayList<>();
+            int i = 0;
             while (arr.size() > 0) {
                 int randNumber = new Random().nextInt(arr.size());
-                str.append(" " + arr.get(randNumber));
-                bluffer.blufferFakeAnswers.add(arr.get(randNumber));
+                str.append(" (" + i + ") " + arr.get(randNumber).toLowerCase());
+                bluffer.blufferFakeAnswers.add(arr.get(randNumber).toLowerCase());
                 arr.remove(randNumber);
+                i++;
             }
 
             serverDataStructure.sendDataToAllUsersInRoom(roomName, str.toString());
@@ -82,28 +92,52 @@ public class BlufferDataStructure implements GamesData {
     public void selectResp(String answer, String roomName, String playerName) {
         Bluffer bluffer =blufferGames.get(roomName);
 
-        int answers = bluffer.blufferAnsweredPlayers;
 
-        bluffer.choiceForPlayer.put(playerName, answer);
+        bluffer.choiceForPlayer.put(playerName, bluffer.blufferFakeAnswers.get(Integer.valueOf(answer)).toLowerCase());
 
-        if (--answers == 0) {
+        if (--bluffer.blufferAnsweredPlayers == 0) {
 
             serverDataStructure.sendDataToAllUsersInRoom(roomName, "GAMEMSG The correct answer is: " + bluffer.blufferQuestion.getRealAnswer());
 
-            ConcurrentHashMap<String,Integer> pointsForPlayer = new ConcurrentHashMap<>();
+            ConcurrentHashMap<String, Integer> pointsForPlayer = new ConcurrentHashMap<>();
 
             for (String c : bluffer.choiceForPlayer.keySet())
-                if (!bluffer.choiceForPlayer.get(c).equals(bluffer.blufferQuestion.getRealAnswer())) {
-                    for (String a : bluffer.answerForPlayer.keySet())
-                        if (bluffer.blufferFakeAnswers.get(Integer.valueOf(bluffer.choiceForPlayer.get(c))).equals(bluffer.answerForPlayer.get(a)))
+                if (pointsForPlayer.get(c) == null)
+                    pointsForPlayer.put(c, 0);
+
+            for (String c : bluffer.choiceForPlayer.keySet()) {
+                System.out.println(c + " " + bluffer.choiceForPlayer.get(c) + "==" + bluffer.blufferQuestion.getRealAnswer().toLowerCase());
+                if (!(bluffer.choiceForPlayer.get(c)).equals(bluffer.blufferQuestion.getRealAnswer().toLowerCase())) {
+                    for (String a : bluffer.answerForPlayer.keySet()) {
+                        System.out.println("BLA BLA " + c + " " + bluffer.choiceForPlayer.get(c) + "==" + bluffer.answerForPlayer.get(a));
+                        if ((bluffer.choiceForPlayer.get(c)).equals(bluffer.answerForPlayer.get(a)))
                             pointsForPlayer.put(a, pointsForPlayer.get(a) + 5);
+                    }
                 } else
                     pointsForPlayer.put(c, pointsForPlayer.get(c) + 10);
+            }
 
-            for (String n : bluffer.choiceForPlayer.keySet())
-                serverDataStructure.sendDataToUser(n, "GAMEMSG correct! +" + pointsForPlayer.get(n) + "pts");
+            for (String p : bluffer.choiceForPlayer.keySet()) {
+                if (!(bluffer.choiceForPlayer.get(p)).equals(bluffer.blufferQuestion.getRealAnswer()))
+                    serverDataStructure.sendDataToUser(p, "GAMEMSG wrong! +" + pointsForPlayer.get(p) + "pts");
+                else
+                    serverDataStructure.sendDataToUser(p, "GAMEMSG correct! +" + pointsForPlayer.get(p) + "pts");
+            }
 
+            StringBuilder str = new StringBuilder("GAMEMSG Summary:");
+            for (String p : pointsForPlayer.keySet()) {
+                if (bluffer.pointsForPlayer.get(p) == null)
+                    bluffer.pointsForPlayer.put(p, 0);
 
+                bluffer.pointsForPlayer.put(p, bluffer.pointsForPlayer.get(p) + pointsForPlayer.get(p));
+                str.append(" " + p + ":" + bluffer.pointsForPlayer.get(p) + "pts");
+            }
+
+            serverDataStructure.sendDataToAllUsersInRoom(roomName, str.toString());
+
+            bluffer.blufferFakeAnswers =  new ArrayList<String>();
+
+            sendQuestion(roomName);
         }
     }
 
@@ -123,7 +157,7 @@ public class BlufferDataStructure implements GamesData {
 
 
             BufferedReader br = new BufferedReader(
-                    new FileReader(System.getProperty("user.dir") + "/src/input.json"));
+                    new FileReader("q.json"));
 
             //convert the json string back to object
             data = gson.fromJson(br, GsonReader.class);
@@ -153,6 +187,8 @@ class Bluffer {
     ConcurrentHashMap<String, String> answerForPlayer;
     //player name choice
     ConcurrentHashMap<String, String> choiceForPlayer;
+
+    ConcurrentHashMap<String,Integer> pointsForPlayer;
 
     public Bluffer() {
     }

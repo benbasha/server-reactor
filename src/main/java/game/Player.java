@@ -10,8 +10,8 @@ import java.io.IOException;
  */
 public class Player {
 
-    private String _Name;
-    private String _roomName;
+    private String _Name = "";
+    private String _roomName = "";
     private int _score;
     private ProtocolCallback _callback;
 
@@ -47,7 +47,7 @@ public class Player {
 
     public void call(String msg){
         try {
-            _callback.sendMessage(msg);
+            _callback.sendMessage(new StringMessage(msg));
         } catch (IOException e) {
             e.printStackTrace();
         }
