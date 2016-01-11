@@ -3,6 +3,7 @@ package game;
 import com.google.gson.Gson;
 import game.gson.GsonReader;
 import game.gson.Question;
+import tokenizer.StringMessage;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -64,81 +65,92 @@ public class BlufferDataStructure implements GamesData {
     public void textResp(String answer, String roomName, String playerName) {
         Bluffer bluffer =blufferGames.get(roomName);
 
-        bluffer.blufferFakeAnswers.add(answer);
-        bluffer.answerForPlayer.put(playerName, answer.toLowerCase());
+        if (!bluffer.answerForPlayer.containsKey(playerName)) {
+            serverDataStructure.sendDataToUser(playerName,"SYSMSG TEXTRESP ACCEPTED");
 
-        if (--bluffer.blufferAnsweredPlayers == 0) {
-            bluffer.blufferFakeAnswers.add(bluffer.blufferQuestion.getRealAnswer());
+            bluffer.blufferFakeAnswers.add(answer);
+            bluffer.answerForPlayer.put(playerName, answer.toLowerCase());
 
-            StringBuilder str = new StringBuilder("ASKCHOICES");
-            ArrayList<String> arr = new ArrayList<>(bluffer.blufferFakeAnswers);
-            bluffer.blufferFakeAnswers = new ArrayList<>();
-            int i = 0;
-            while (arr.size() > 0) {
-                int randNumber = new Random().nextInt(arr.size());
-                str.append(" (" + i + ") " + arr.get(randNumber).toLowerCase());
-                bluffer.blufferFakeAnswers.add(arr.get(randNumber).toLowerCase());
-                arr.remove(randNumber);
-                i++;
+            if (--bluffer.blufferAnsweredPlayers == 0) {
+                bluffer.blufferFakeAnswers.add(bluffer.blufferQuestion.getRealAnswer());
+
+                StringBuilder str = new StringBuilder("ASKCHOICES");
+                ArrayList<String> arr = new ArrayList<>(bluffer.blufferFakeAnswers);
+                bluffer.blufferFakeAnswers = new ArrayList<>();
+                int i = 0;
+                while (arr.size() > 0) {
+                    int randNumber = new Random().nextInt(arr.size());
+                    str.append(" (" + i + ") " + arr.get(randNumber).toLowerCase());
+                    bluffer.blufferFakeAnswers.add(arr.get(randNumber).toLowerCase());
+                    arr.remove(randNumber);
+                    i++;
+                }
+
+                serverDataStructure.sendDataToAllUsersInRoom(roomName, str.toString());
+
+                bluffer.blufferAnsweredPlayers = bluffer.blufferAnswers;
             }
-
-            serverDataStructure.sendDataToAllUsersInRoom(roomName, str.toString());
-
-            bluffer.blufferAnsweredPlayers = bluffer.blufferAnswers;
-        }
+        } else
+            serverDataStructure.sendDataToUser(playerName,"SYSMSG TEXTRESP REJECTED");
     }
 
     @Override
     public void selectResp(String answer, String roomName, String playerName) {
         Bluffer bluffer =blufferGames.get(roomName);
 
+        if (!bluffer.choiceForPlayer.containsKey(playerName) && Integer.valueOf(answer) < bluffer.blufferFakeAnswers.size()) {
+            serverDataStructure.sendDataToUser(playerName,"SYSMSG SELECTRESP ACCEPTED");
 
-        bluffer.choiceForPlayer.put(playerName, bluffer.blufferFakeAnswers.get(Integer.valueOf(answer)).toLowerCase());
+            bluffer.choiceForPlayer.put(playerName, bluffer.blufferFakeAnswers.get(Integer.valueOf(answer)).toLowerCase());
 
-        if (--bluffer.blufferAnsweredPlayers == 0) {
+            if (--bluffer.blufferAnsweredPlayers == 0) {
 
-            serverDataStructure.sendDataToAllUsersInRoom(roomName, "GAMEMSG The correct answer is: " + bluffer.blufferQuestion.getRealAnswer());
+                serverDataStructure.sendDataToAllUsersInRoom(roomName, "GAMEMSG The correct answer is: " + bluffer.blufferQuestion.getRealAnswer());
 
-            ConcurrentHashMap<String, Integer> pointsForPlayer = new ConcurrentHashMap<>();
+                ConcurrentHashMap<String, Integer> pointsForPlayer = new ConcurrentHashMap<>();
 
-            for (String c : bluffer.choiceForPlayer.keySet())
-                if (pointsForPlayer.get(c) == null)
-                    pointsForPlayer.put(c, 0);
+                for (String c : bluffer.choiceForPlayer.keySet())
+                    if (pointsForPlayer.get(c) == null)
+                        pointsForPlayer.put(c, 0);
 
-            for (String c : bluffer.choiceForPlayer.keySet()) {
-                System.out.println(c + " " + bluffer.choiceForPlayer.get(c) + "==" + bluffer.blufferQuestion.getRealAnswer().toLowerCase());
-                if (!(bluffer.choiceForPlayer.get(c)).equals(bluffer.blufferQuestion.getRealAnswer().toLowerCase())) {
-                    for (String a : bluffer.answerForPlayer.keySet()) {
-                        System.out.println("BLA BLA " + c + " " + bluffer.choiceForPlayer.get(c) + "==" + bluffer.answerForPlayer.get(a));
-                        if ((bluffer.choiceForPlayer.get(c)).equals(bluffer.answerForPlayer.get(a)))
-                            pointsForPlayer.put(a, pointsForPlayer.get(a) + 5);
-                    }
-                } else
-                    pointsForPlayer.put(c, pointsForPlayer.get(c) + 10);
+                for (String c : bluffer.choiceForPlayer.keySet()) {
+                    System.out.println(c + " " + bluffer.choiceForPlayer.get(c) + "==" + bluffer.blufferQuestion.getRealAnswer().toLowerCase());
+                    if (!(bluffer.choiceForPlayer.get(c)).equals(bluffer.blufferQuestion.getRealAnswer().toLowerCase())) {
+                        for (String a : bluffer.answerForPlayer.keySet()) {
+                            //System.out.println("BLA BLA " + c + " " + bluffer.choiceForPlayer.get(c) + "==" + bluffer.answerForPlayer.get(a));
+                            if ((bluffer.choiceForPlayer.get(c)).equals(bluffer.answerForPlayer.get(a)))
+                                pointsForPlayer.put(a, pointsForPlayer.get(a) + 5);
+                        }
+                    } else
+                        pointsForPlayer.put(c, pointsForPlayer.get(c) + 10);
+                }
+
+                for (String p : bluffer.choiceForPlayer.keySet()) {
+                    if (!(bluffer.choiceForPlayer.get(p)).equals(bluffer.blufferQuestion.getRealAnswer().toLowerCase()))
+                        serverDataStructure.sendDataToUser(p, "GAMEMSG wrong! +" + pointsForPlayer.get(p) + "pts");
+                    else
+                        serverDataStructure.sendDataToUser(p, "GAMEMSG correct! +" + pointsForPlayer.get(p) + "pts");
+                }
+
+                StringBuilder str = new StringBuilder("GAMEMSG Summary:");
+                for (String p : pointsForPlayer.keySet()) {
+                    if (bluffer.pointsForPlayer.get(p) == null)
+                        bluffer.pointsForPlayer.put(p, 0);
+
+                    bluffer.pointsForPlayer.put(p, bluffer.pointsForPlayer.get(p) + pointsForPlayer.get(p));
+                    str.append(" " + p + ":" + bluffer.pointsForPlayer.get(p) + "pts");
+                }
+
+                serverDataStructure.sendDataToAllUsersInRoom(roomName, str.toString());
+
+                bluffer.blufferFakeAnswers = new ArrayList<String>();
+                bluffer.answerForPlayer = new ConcurrentHashMap<>();
+                bluffer.choiceForPlayer = new ConcurrentHashMap<>();
+
+                sendQuestion(roomName);
             }
-
-            for (String p : bluffer.choiceForPlayer.keySet()) {
-                if (!(bluffer.choiceForPlayer.get(p)).equals(bluffer.blufferQuestion.getRealAnswer()))
-                    serverDataStructure.sendDataToUser(p, "GAMEMSG wrong! +" + pointsForPlayer.get(p) + "pts");
-                else
-                    serverDataStructure.sendDataToUser(p, "GAMEMSG correct! +" + pointsForPlayer.get(p) + "pts");
-            }
-
-            StringBuilder str = new StringBuilder("GAMEMSG Summary:");
-            for (String p : pointsForPlayer.keySet()) {
-                if (bluffer.pointsForPlayer.get(p) == null)
-                    bluffer.pointsForPlayer.put(p, 0);
-
-                bluffer.pointsForPlayer.put(p, bluffer.pointsForPlayer.get(p) + pointsForPlayer.get(p));
-                str.append(" " + p + ":" + bluffer.pointsForPlayer.get(p) + "pts");
-            }
-
-            serverDataStructure.sendDataToAllUsersInRoom(roomName, str.toString());
-
-            bluffer.blufferFakeAnswers =  new ArrayList<String>();
-
-            sendQuestion(roomName);
-        }
+        } else
+            serverDataStructure.sendDataToUser(playerName,"SYSMSG SELECTRESP REJECTED");
     }
 
     @Override

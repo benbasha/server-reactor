@@ -40,7 +40,7 @@ public class MessageParser {
                     return Message.QUIT;
             }
         }
-        return null;
+        return Message.UNIDENTIFIED;
     }
 
     public String getMessage(){

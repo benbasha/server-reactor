@@ -8,7 +8,8 @@ public enum Message {
     STARTGAME,
     TXTRESP,
     SELECTRESP,
-    QUIT
+    QUIT,
+    UNIDENTIFIED
 
 
 }

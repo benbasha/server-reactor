@@ -46,17 +46,17 @@ public class TBGPImpl implements AsyncServerProtocol<StringMessage> {
                     case NICK:
                         String nickName = parser.getMessage();
 
-                        if (nickName != null) {
+                        if (!nickName.equals("")) {
                             //out = new PrintWriter(new OutputStreamWriter(clientSocket.getOutputStream(),"UTF-8"), true);
 
-                            if (serverDataStructure.containsPlayer(nickName)) {
+                            if (serverDataStructure.containsPlayer(nickName) || !name.equals("")) {
                                 callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " REJECTED"));
                             } else {
                                 Player player = new Player(nickName, callback);
                                 serverDataStructure.addPlayer(player);
                                 callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " ACCEPTED"));
+                                name = nickName;
                             }
-                            name = nickName;
                         }
                         break;
                     case JOIN:
@@ -101,15 +101,11 @@ public class TBGPImpl implements AsyncServerProtocol<StringMessage> {
                             callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " REJECTED"));
                         break;
                     case TXTRESP:
-                        if (serverDataStructure.textResp(parser.getMessage(), name))
-                            callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " ACCEPTED"));
-                        else
+                        if (!serverDataStructure.textResp(parser.getMessage(), name))
                             callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " REJECTED"));
                         break;
                     case SELECTRESP:
-                        if (serverDataStructure.selectResp(parser.getMessage(), name))
-                            callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " ACCEPTED"));
-                        else
+                        if (!serverDataStructure.selectResp(parser.getMessage(), name))
                             callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " REJECTED"));
                         break;
                     case QUIT:
