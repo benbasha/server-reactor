@@ -94,7 +94,7 @@ public class ServerDataStructure {
 
 
     public boolean startGame(String game, String playerName) {
-        if (_Games.containsKey(game)) {
+        if (_Games.containsKey(game) && !playerName.equals("") && !_Players.get(playerName).get_roomName().equals("")) {
             GamesData gamesData = _Games.get(game);
             _GamePerRoom.put(_Players.get(playerName).get_roomName(), gamesData);
             String RoomName = _Players.get(playerName).get_roomName();

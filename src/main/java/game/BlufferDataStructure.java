@@ -144,6 +144,8 @@ public class BlufferDataStructure implements GamesData {
     @Override
     public void quit(String roomName) {
 
+        
+
     }
 
     private Question getNewQuestion() {
