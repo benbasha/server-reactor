@@ -1,4 +1,4 @@
-package game.gson;
+package data.gson;
 
 /**
  * Created by benbash on 1/10/16.

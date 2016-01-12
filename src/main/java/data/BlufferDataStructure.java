@@ -1,23 +1,21 @@
-package game;
+package data;
 
 import com.google.gson.Gson;
-import game.gson.GsonReader;
-import game.gson.Question;
-import tokenizer.StringMessage;
+import data.gson.GsonReader;
+import data.gson.Question;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Created by benbash on 1/10/16.
  */
-public class BlufferDataStructure implements GamesData {
+public class BlufferDataStructure implements Game {
 
     ConcurrentHashMap<String, Bluffer> blufferGames;
 
@@ -39,13 +37,30 @@ public class BlufferDataStructure implements GamesData {
         bluffer.blufferAnsweredPlayers = numberOfPlayers;
         bluffer.blufferQuestion =  getNewQuestion();
         bluffer.answerForPlayer = new ConcurrentHashMap<>();
-        bluffer.blufferFakeAnswers =  new ArrayList<String>();
+        bluffer.blufferFakeAnswers =  new CopyOnWriteArrayList<String>();
         bluffer.choiceForPlayer = new ConcurrentHashMap<>();
         bluffer.pointsForPlayer = new ConcurrentHashMap<>();
 
         blufferGames.put(roomName, bluffer);
 
         sendQuestion(roomName);
+    }
+
+    @Override
+    public void handleCommand(String command, String msg, String playerName, String room) {
+        System.out.println(command + "##" + msg + "##" + playerName + "##" + room);
+        switch (command) {
+            case "TXTRESP":
+                textResp(msg, room, playerName);
+
+                break;
+            case "SELECTRESP":
+                selectResp(msg, room, playerName);
+
+                break;
+            default:
+                serverDataStructure.sendDataToUser(playerName, "SYSMSG " + command + " UNIDENTIFIED");
+        }
     }
 
     private void sendQuestion(String roomName) {
@@ -63,7 +78,6 @@ public class BlufferDataStructure implements GamesData {
 
     }
 
-    @Override
     public void textResp(String answer, String roomName, String playerName) {
         Bluffer bluffer =blufferGames.get(roomName);
 
@@ -78,7 +92,7 @@ public class BlufferDataStructure implements GamesData {
 
                 StringBuilder str = new StringBuilder("ASKCHOICES");
                 ArrayList<String> arr = new ArrayList<>(bluffer.blufferFakeAnswers);
-                bluffer.blufferFakeAnswers = new ArrayList<>();
+                bluffer.blufferFakeAnswers = new CopyOnWriteArrayList<>();
                 int i = 0;
                 while (arr.size() > 0) {
                     int randNumber = new Random().nextInt(arr.size());
@@ -100,7 +114,6 @@ public class BlufferDataStructure implements GamesData {
         return s.matches("[-+]?\\d*\\.?\\d+");
     }
 
-    @Override
     public void selectResp(String answer, String roomName, String playerName) {
         Bluffer bluffer =blufferGames.get(roomName);
 
@@ -149,7 +162,7 @@ public class BlufferDataStructure implements GamesData {
 
                 serverDataStructure.sendDataToAllUsersInRoom(roomName, str.toString());
 
-                bluffer.blufferFakeAnswers = new ArrayList<String>();
+                bluffer.blufferFakeAnswers = new CopyOnWriteArrayList<String>();
                 bluffer.answerForPlayer = new ConcurrentHashMap<>();
                 bluffer.choiceForPlayer = new ConcurrentHashMap<>();
 
@@ -157,13 +170,6 @@ public class BlufferDataStructure implements GamesData {
             }
         } else
             serverDataStructure.sendDataToUser(playerName,"SYSMSG SELECTRESP REJECTED");
-    }
-
-    @Override
-    public void quit(String roomName) {
-
-        
-
     }
 
     private Question getNewQuestion() {
@@ -189,6 +195,7 @@ public class BlufferDataStructure implements GamesData {
 
         return questions[new Random().nextInt(questions.length)];
     }
+
 }
 
 class Bluffer {
@@ -202,7 +209,7 @@ class Bluffer {
     //current question
     Question blufferQuestion;
     //current question
-    ArrayList<String> blufferFakeAnswers;
+    CopyOnWriteArrayList<String> blufferFakeAnswers;
     //player name - fake answer
     ConcurrentHashMap<String, String> answerForPlayer;
     //player name choice

@@ -1,4 +1,4 @@
-package game;
+package data;
 
 public class MessageParser {
 
@@ -24,10 +24,6 @@ public class MessageParser {
                     return Message.MSG;
                 case "STARTGAME":
                     return Message.STARTGAME;
-                case "TXTRESP":
-                    return Message.TXTRESP;
-                case "SELECTRESP":
-                    return Message.SELECTRESP;
             }
         }
         else {

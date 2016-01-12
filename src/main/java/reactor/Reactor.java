@@ -14,9 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-import game.BlufferDataStructure;
-import game.GamesData;
-import game.ServerDataStructure;
+import data.ServerDataStructure;
 import protocol.*;
 import tokenizer.*;
 

@@ -1,4 +1,4 @@
-package game;
+package data;
 
 public enum Message {
     NICK,
@@ -6,8 +6,6 @@ public enum Message {
     MSG,
     LISTGAMES,
     STARTGAME,
-    TXTRESP,
-    SELECTRESP,
     QUIT,
     UNIDENTIFIED
 

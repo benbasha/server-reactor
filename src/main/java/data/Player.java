@@ -1,4 +1,5 @@
-package game;
+package data;
+
 
 import protocol.ProtocolCallback;
 import tokenizer.StringMessage;
@@ -20,15 +21,15 @@ public class Player {
     }
 
 
-    public String get_roomName() {
+    public String getRoomName() {
         return _roomName;
     }
 
-    public String get_Name() {
+    public String getName() {
         return _Name;
     }
 
-    public void set_roomName(String _roomName) {
+    public void setRoomName(String _roomName) {
         this._roomName = _roomName;
     }
 

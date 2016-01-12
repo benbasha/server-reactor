@@ -1,17 +1,16 @@
 package protocol;
 
-import com.sun.corba.se.spi.activation.Server;
-import game.*;
+import data.Message;
+import data.MessageParser;
+import data.Player;
+import data.ServerDataStructure;
 import tokenizer.StringMessage;
 
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.util.Iterator;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * a simple implementation of the server protocol interface
+ * a simple implementation of the server server_reactor.protocol interface
  */
 public class TBGPImpl implements AsyncServerProtocol<StringMessage> {
 
@@ -78,7 +77,7 @@ public class TBGPImpl implements AsyncServerProtocol<StringMessage> {
                                 Iterator<Player> players = serverDataStructure.getRoomsPlayers(playersroomName);
                                 while (players.hasNext()) {
                                     Player p = players.next();
-                                    if (!p.get_Name().equals(name)) {
+                                    if (!p.getName().equals(name)) {
                                         p.call("USRMSG " + name + ":" + message);
                                         System.out.println("USRMSG " + name + ":" + message);
                                     }
@@ -100,20 +99,24 @@ public class TBGPImpl implements AsyncServerProtocol<StringMessage> {
                         else
                             callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " REJECTED"));
                         break;
-                    case TXTRESP:
-                        if (!serverDataStructure.textResp(parser.getMessage(), name))
-                            callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " REJECTED"));
-                        break;
-                    case SELECTRESP:
-                        if (!serverDataStructure.selectResp(parser.getMessage(), name))
-                            callback.sendMessage(new StringMessage("SYSMSG " + command.toString() + " REJECTED"));
-                        break;
+
                     case QUIT:
                         serverDataStructure.quit(name);
                         _shouldClose = true;
                         break;
                     default:
-                        callback.sendMessage(new StringMessage("SYSMSG " + msg.getMessage() + " UNIDENTIFIED"));
+                        int spaceLocation = msg.getMessage().indexOf(" ");
+                        String c = msg.getMessage();
+                        if (spaceLocation != -1)
+                            c = msg.getMessage().substring(0, spaceLocation);
+
+                        if (!name.equals("")) {
+                            if (!serverDataStructure.handleGameCommands(c, parser.getMessage(), name))
+                                callback.sendMessage(new StringMessage("SYSMSG " + c + " UNIDENTIFIED"));
+
+                        } else
+                            callback.sendMessage(new StringMessage("SYSMSG " + c + " UNIDENTIFIED"));
+
                 }
         }
     }
@@ -122,24 +125,24 @@ public class TBGPImpl implements AsyncServerProtocol<StringMessage> {
      * detetmine whether the given message is the termination message
      *
      * @param msg the message to examine
-     * @return false - this simple protocol doesn't allow termination...
+     * @return false - this simple server_reactor.protocol doesn't allow termination...
      */
     public boolean isEnd(StringMessage msg) {
         return msg.equals("QUIT");
     }
 
     /**
-     * Is the protocol in a closing state?.
-     * When a protocol is in a closing state, it's handler should write out all pending data,
+     * Is the server_reactor.protocol in a closing state?.
+     * When a server_reactor.protocol is in a closing state, it's handler should write out all pending data,
      * and close the connection.
-     * @return true if the protocol is in closing state.
+     * @return true if the server_reactor.protocol is in closing state.
      */
     public boolean shouldClose() {
         return this._shouldClose;
     }
 
     /**
-     * Indicate to the protocol that the client disconnected.
+     * Indicate to the server_reactor.protocol that the client disconnected.
      */
     public void connectionTerminated() {
         this._connectionTerminated = true;

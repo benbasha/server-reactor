@@ -1,17 +1,19 @@
-package game;
+package data;
 
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Created by benbash on 1/10/16.
+ * Data structure to save all the server data
  */
 public class ServerDataStructure {
-    ConcurrentHashMap<String, Player> _Players;
-    ConcurrentHashMap<String, CopyOnWriteArrayList<Player>> _Rooms;
-    ConcurrentHashMap<String, GamesData> _Games;
-    ConcurrentHashMap<String, GamesData> _GamePerRoom;
+    private ConcurrentHashMap<String, Player> _Players;
+    private ConcurrentHashMap<String, CopyOnWriteArrayList<Player>> _Rooms;
+    //list of supported games
+    private ConcurrentHashMap<String, Game> _Games;
+    //indicates witch game is running in each room
+    private ConcurrentHashMap<String, Game> _GamePerRoom;
 
     public ServerDataStructure() {
         _Players = new ConcurrentHashMap<>();
@@ -19,6 +21,7 @@ public class ServerDataStructure {
         _Games = new ConcurrentHashMap<>();
         _GamePerRoom = new ConcurrentHashMap<>();
 
+        //lets add some games to server
         _Games.put("BLUFFER", new BlufferDataStructure(this));
     }
 
@@ -32,7 +35,7 @@ public class ServerDataStructure {
 
     public String getRoom(String playerName){
         if ( _Players.containsKey(playerName)) {
-            String RoomName = _Players.get(playerName).get_roomName();
+            String RoomName = _Players.get(playerName).getRoomName();
             if (RoomName != null)
                 return RoomName;
         }
@@ -45,7 +48,7 @@ public class ServerDataStructure {
     }
 
     public void addPlayer(Player player) {
-        _Players.put(player.get_Name(), player);
+        _Players.put(player.getName(), player);
     }
 
     public boolean joinToRoom(String roomName, String name) {
@@ -56,7 +59,7 @@ public class ServerDataStructure {
 
         if (_Rooms.containsKey(roomName)) {
             //check if the player already in the requested room
-            if (player.get_roomName().equals(roomName))
+            if (player.getRoomName().equals(roomName))
                 return false;
             else {
                 _Rooms.get(roomName).add(player);
@@ -69,10 +72,10 @@ public class ServerDataStructure {
         }
 
         //the player is in other room - move it out
-        if (!player.get_roomName().equals(""))
-            _Rooms.get(player.get_roomName()).remove(player);
+        if (!player.getRoomName().equals(""))
+            _Rooms.get(player.getRoomName()).remove(player);
         //join to room
-        player.set_roomName(roomName);
+        player.setRoomName(roomName);
 
         return true;
     }
@@ -94,47 +97,27 @@ public class ServerDataStructure {
 
 
     public boolean startGame(String game, String playerName) {
-        if (_Games.containsKey(game) && !playerName.equals("") && !_Players.get(playerName).get_roomName().equals("")
-                && !_GamePerRoom.containsKey(_Players.get(playerName).get_roomName())) {
-            GamesData gamesData = _Games.get(game);
-            _GamePerRoom.put(_Players.get(playerName).get_roomName(), gamesData);
-            String RoomName = _Players.get(playerName).get_roomName();
+        if (_Games.containsKey(game) && !playerName.equals("") && !_Players.get(playerName).getRoomName().equals("")
+                && !_GamePerRoom.containsKey(_Players.get(playerName).getRoomName())) {
+            Game gamesData = _Games.get(game);
+            _GamePerRoom.put(_Players.get(playerName).getRoomName(), gamesData);
+            String RoomName = _Players.get(playerName).getRoomName();
             gamesData.startNewGame(RoomName, _Rooms.get(RoomName).size());
             return true;
         }
         return false;
     }
 
-    public boolean textResp(String message, String playerName) {
-        GamesData game = _GamePerRoom.get(_Players.get(playerName).get_roomName());
 
-        if (game == null)
-            return false;
-
-        game.textResp(message, _Players.get(playerName).get_roomName(), playerName);
-
-        return true;
-    }
-
-    public boolean selectResp(String message, String playerName) {
-        GamesData game = _GamePerRoom.get(_Players.get(playerName).get_roomName());
-
-        if (game == null)
-            return false;
-
-        game.selectResp(message, _Players.get(playerName).get_roomName(), playerName);
-
-        return true;
-    }
 
     public void quit(String name) {
-        if (!_GamePerRoom.containsKey(_Players.get(name).get_roomName())) {
-            _Rooms.get(_Players.get(name).get_roomName()).remove(_Players.get(name));
+        if (!_GamePerRoom.containsKey(_Players.get(name).getRoomName())) {
+            _Rooms.get(_Players.get(name).getRoomName()).remove(_Players.get(name));
             _Players.get(name).call("SYSMSG QUIT ACCEPTED");
-            /*GamesData game = _GamePerRoom.get(_Players.get(name).get_roomName());
+            /*Game game = _GamePerRoom.get(_Players.get(name).getRoomName());
 
             if (game != null)
-                game.quit(_Players.get(name).get_roomName());*/
+                game.quit(_Players.get(name).getRoomName());*/
         } else
             _Players.get(name).call("SYSMSG QUIT REJECTED");
     }
@@ -151,5 +134,16 @@ public class ServerDataStructure {
 
     public void endGame(String roomName) {
         _GamePerRoom.remove(roomName);
+    }
+
+    public boolean handleGameCommands(String command, String msg, String playerName) {
+        Game game = _GamePerRoom.get(_Players.get(playerName).getRoomName());
+
+        if (game == null)
+            return false;
+
+        game.handleCommand(command, msg, playerName, getRoom(playerName));
+
+        return true;
     }
 }
